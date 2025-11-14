@@ -1,3 +1,10 @@
+// persistent id
+let persistentId = localStorage.getItem("client_id");
+if (!persistentId) {
+    persistentId = crypto.randomUUID();
+    localStorage.setItem("client_id", persistentId);
+}
+
 // ui refs
 const $roomLabel        = document.getElementById("room-label");
 const $roundLabel       = document.getElementById("round-label");
@@ -31,8 +38,10 @@ const $waitingMsg       = document.getElementById("waiting-msg");
 
 const $logBox           = document.getElementById("log-box");
 
-
 // helpers
+const show = el => el.classList.remove("hidden");
+const hide = el => el.classList.add("hidden");
+
 function log(...args) {
     $logBox.textContent += args.join(" ") + "\n";
 }
@@ -57,27 +66,27 @@ function renderPlayers(list) {
     for (const p of list) {
         const li = document.createElement("li");
         const hostTag = p.isHost ? "(HOST) " : "";
-        li.textContent = `${hostTag}${p.name} [id ${p.id}]`;
+        li.textContent = `${hostTag}${p.name}`;
         $playersList.appendChild(li);
     }
 }
 
 function enterGameMode() {
-    $lobbyPanel.style.display = "none";
-    $gamePanel.style.display = "flex";
+    hide($lobbyPanel);
+    show($gamePanel);
 }
 
 function enterLobbyMode(roomCode) {
     if (roomCode) {
         $roomLabel.textContent = `Room: ${roomCode}`;
     }
-    $menuPanel.style.display = "none";
-    $lobbyPanel.style.display = "block";
+    hide($menuPanel);
+    show($lobbyPanel);
 }
 
 function exitLobbyMode() {
-    $menuPanel.style.display = "block";
-    $lobbyPanel.style.display = "none";
+    show($menuPanel);
+    hide($lobbyPanel);
     $roomLabel.textContent = "Room: ";
 }
 
@@ -85,17 +94,16 @@ function exitLobbyMode() {
 const ws = new WebSocket(`ws://${location.host}`);
 
 ws.onopen = () => {
-    log("connected to server");
+    ws.send(JSON.stringify({
+        type: "IDENTIFY",
+        pid: persistentId
+    }));
 };
 
 ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
 
     switch (msg.type) {
-
-        case "YOUR_ID":
-            log("you are client:", msg.id);
-            break;
 
         case "HOSTED":
             enterLobbyMode(msg.room);
@@ -132,13 +140,7 @@ ws.onmessage = (e) => {
 
         case "PLAYER_LIST":
             renderPlayers(msg.players);
-
-            // switch to lobby UI if not already
-            if ($menuPanel.style.display !== "none") {
-                const room = $roomInput.value.trim().toUpperCase();
-                enterLobbyMode(room);
-            }
-
+            enterLobbyMode(msg.room)
             break;
 
         case "LEFT_ROOM":
@@ -149,8 +151,8 @@ ws.onmessage = (e) => {
 
         case "ROUND_START":
             $roundLabel.textContent = `round ${msg.round}`;
-            $choicesContainer.style.display = "flex";
-            $waitingMsg.style.display = "none";
+            show($choicesContainer);
+            hide($waitingMsg);
             break;
 
         case "LEADERBOARD_UPDATE":
@@ -206,12 +208,10 @@ $leaveBtn.onclick = () => {
 
 $choiceA.onclick = () => {
     ws.send(JSON.stringify({ type: "ANSWER", choice: "A" }));
-    $choicesContainer.style.display = "none";
-    $waitingMsg.style.display = "block";
+    show($waitingMsg);
 };
 
 $choiceB.onclick = () => {
     ws.send(JSON.stringify({ type: "ANSWER", choice: "B" }));
-    $choicesContainer.style.display = "none";
-    $waitingMsg.style.display = "block";
+    show($waitingMsg);
 };
