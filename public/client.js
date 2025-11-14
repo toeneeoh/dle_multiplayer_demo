@@ -31,6 +31,7 @@ const $choicesContainer = document.getElementById("choices-container");
 const $choiceA          = document.getElementById("choice-a");
 const $choiceB          = document.getElementById("choice-b");
 
+const $scoreTicker      = document.getElementById("score-ticker");
 const $scoreList        = document.getElementById("score-list");
 const $scoreBoard       = document.getElementById("scoreboard");
 
@@ -38,12 +39,53 @@ const $waitingMsg       = document.getElementById("waiting-msg");
 
 const $logBox           = document.getElementById("log-box");
 
+// events
+$choiceA.addEventListener("click", () => selectChoice($choiceA));
+$choiceB.addEventListener("click", () => selectChoice($choiceB));
+
 // helpers
 const show = el => el.classList.remove("hidden");
 const hide = el => el.classList.add("hidden");
 
 function log(...args) {
     $logBox.textContent += args.join(" ") + "\n";
+}
+
+function resetScoreTicker() {
+    $scoreTicker.innerHTML = ""; // wipe old
+
+    for (let i = 0; i < 10; i++) {
+        const dot = document.createElement("div");
+        dot.className = "score-dot";
+        $scoreTicker.appendChild(dot);
+    }
+}
+
+function applyScoreDot(roundIndex, isCorrect) {
+    const dots = $scoreTicker.querySelectorAll(".score-dot");
+    if (!dots[roundIndex - 1]) return; // safety
+
+    dots[roundIndex - 1].classList.add(isCorrect ? "correct" : "wrong");
+}
+
+function clearChoiceStyles() {
+    $choiceA.classList.remove("chosen", "correct", "wrong");
+    $choiceB.classList.remove("chosen", "correct", "wrong");
+}
+
+function setChoiceColor(correct) {
+    if (correct === "A") {
+        $choiceA.classList.add("correct");
+        $choiceB.classList.add("wrong");
+    } else {
+        $choiceA.classList.add("wrong");
+        $choiceB.classList.add("correct");
+    }
+}
+
+function selectChoice(btn) {
+    clearChoiceStyles();
+    btn.classList.add("chosen");
 }
 
 function gameOver() {
@@ -72,8 +114,11 @@ function renderPlayers(list) {
 }
 
 function enterGameMode() {
+    hide($menuPanel);
     hide($lobbyPanel);
     show($gamePanel);
+
+    resetScoreTicker();
 }
 
 function enterLobbyMode(roomCode) {
@@ -150,17 +195,28 @@ ws.onmessage = (e) => {
             break;
 
         case "ROUND_START":
+            clearChoiceStyles();
+
             $roundLabel.textContent = `round ${msg.round}`;
             show($choicesContainer);
             hide($waitingMsg);
             break;
 
         case "LEADERBOARD_UPDATE":
+            clearChoiceStyles();
             renderScores(msg.leaderboard);
+
+            const correct = msg.correct
+
+            // button color highlight
+            setChoiceColor(correct);
+
+            // score ticker
+            applyScoreDot(msg.round, msg.yourAnswer === correct);
+
             break;
 
         case "GAME_OVER":
-            renderScores(msg.leaderboard);
             gameOver()
             break;
     }
