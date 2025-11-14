@@ -1,0 +1,178 @@
+:root {
+    --bg: #f7f7f7;
+    --fg: #222;
+    --accent: #3a7bfa;
+    --accent-dark: #2d5fcc;
+    --border: #e2e2e2;
+    --radius: 14px;
+    --pad: 18px;
+    font-family: system-ui, sans-serif;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: var(--pad);
+    background: var(--bg);
+    color: var(--fg);
+}
+
+/* central column */
+.container {
+    width: 100%;
+    max-width: 620px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* cards */
+.panel {
+    background: #fff;
+    padding: var(--pad);
+    border-radius: var(--radius);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    margin-bottom: 22px;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* headings */
+h1 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 1.2rem;
+    font-size: 2.2rem;
+    font-weight: 800;
+}
+
+h3 {
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-transform: lowercase;
+}
+
+/* inputs & buttons */
+input, button {
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    font-size: 1.15rem;
+    box-sizing: border-box;
+}
+
+/* row layout for lobby buttons */
+.row {
+    display: flex;
+    gap: 10px;
+}
+
+/* accent buttons */
+button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .1s ease;
+}
+
+button:active {
+    background: var(--accent-dark);
+    transform: scale(0.96);
+}
+
+/* player lists */
+#players-list,
+#score-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+}
+
+#players-list li,
+#score-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.1rem;
+}
+
+#players-list li:last-child,
+#score-list li:last-child {
+    border-bottom: none;
+}
+
+/* game panel */
+
+#round-label {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 22px;
+}
+
+/* choice buttons */
+#choices-container {
+    display: flex;
+    justify-content: center;
+    gap: 1.4rem;
+    margin-bottom: 25px;
+}
+
+.choice-btn {
+    width: 150px;
+    height: 150px;
+    font-size: 3rem;
+    border-radius: 18px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#waiting-msg {
+    font-size: 1.3rem;
+    opacity: 0.8;
+    margin-bottom: 20px;
+}
+
+/* ───────────────────────────────
+   mobile
+─────────────────────────────── */
+
+@media (max-width: 480px) {
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    input, button {
+        font-size: 1rem;
+        padding: 12px;
+    }
+
+    #choices-container {
+        flex-direction: row;
+        gap: 1rem;
+    }
+
+    .choice-btn {
+        width: 40%;
+        height: 60%;
+        font-size: 2.4rem;
+    }
+
+    #round-label {
+        font-size: 1.3rem;
+    }
+}
