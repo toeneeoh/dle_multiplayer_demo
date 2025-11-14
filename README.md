@@ -1,6 +1,13 @@
-run server with
+First time setup and deploy with
 
 ```bash
+npm run start
+```
+
+or
+
+```bash
+npm install
 node server.js
 ```
 
