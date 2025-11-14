@@ -1,105 +1,64 @@
 <!DOCTYPE html>
 <html>
-    <body>
-        <h1>Dle Multiplayer</h1>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+</head>
 
-        <!-- NOT IN LOBBY -->
-        <div id="menu-panel">
+<body>
+<div class="container">
 
-            <!-- username -->
-            <h3>Username</h3>
-            <input id="username-input" placeholder="Name (max 16)">
-            <button id="setname-btn">Set Name</button>
+    <h1>dle multiplayer</h1>
 
-            <br><br>
+    <!-- MENU -->
+    <div id="menu-panel" class="panel">
+        <h3>username</h3>
+        <input id="username-input" maxlength="16" placeholder="name (max 16)">
+        <button id="setname-btn">set name</button>
 
-            <!-- host controls -->
-            <button id="host-btn">Host Lobby</button>
+        <hr>
 
-            <br><br>
+        <button id="host-btn">host lobby</button>
 
-            <!-- join controls -->
-            <input id="room-input" placeholder="ROOM CODE">
-            <button id="join-btn">Join Lobby</button>
+        <input id="room-input" placeholder="room code">
+        <button id="join-btn">join lobby</button>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="lobby-panel" class="panel hidden">
+        <h3 id="room-label">room:</h3>
+
+        <div class="row">
+            <button id="play-btn">play</button>
+            <button id="leave-btn">leave</button>
         </div>
 
-        <!-- IN LOBBY -->
-        <div id="lobby-panel" style="display: none;">
+        <h3>players</h3>
+        <ul id="players-list"></ul>
 
-            <h3 id="room-label">Room:</h3>
+        <input id="msg-input" placeholder="message">
+        <button id="send-btn">send</button>
+    </div>
 
-            <!-- lobby actions -->
-            <button id="play-btn">Play</button>
-            <button id="leave-btn">Leave</button>
+    <!-- GAME -->
+    <div id="game-panel" class="panel hidden">
 
-            <br><br>
+        <h3 id="round-label"></h3>
 
-            <!-- player list -->
-            <h3>Players</h3>
-            <ul id="players-list"></ul>
-
-            <br><br>
-
-            <!-- messaging -->
-            <input id="msg-input" placeholder="Message">
-            <button id="send-btn">Send</button>
+        <div id="choices-container">
+            <button id="choice-a" class="choice-btn">A</button>
+            <button id="choice-b" class="choice-btn">B</button>
         </div>
 
-        <br><br>
+        <div id="waiting-msg" class="hidden">waiting for other players...</div>
 
-        <!-- IN GAME -->
-        <div id="game-panel" style="display:none; margin-top:40px; justify-content:center; gap:60px;">
+        <h3>scores</h3>
+        <ul id="score-list"></ul>
 
-            <!-- left side game UI -->
-            <div id="game-left" style="text-align:center;">
-                <h3 id="round-label">round 1</h3>
+    </div>
 
-                <div id="choices-container">
-                    <button id="choice-a" class="choice-btn">A</button>
-                    <button id="choice-b" class="choice-btn">B</button>
-                </div>
+</div>
 
-                <div id="waiting-msg" style="display:none; font-size:24px; margin-top:30px;">
-                    waiting for other players...
-                </div>
-            </div>
-
-            <!-- right side leaderboard -->
-            <div id="scoreboard" style="min-width:220px;">
-                <h3>scores</h3>
-                <ul id="score-list"></ul>
-            </div>
-
-        </div>
-
-        <!-- LOG -->
-        <pre id="log-box"></pre>
-
-        <script src="client.js"></script>
-    </body>
+<script src="client.js"></script>
+</body>
 </html>
-
-<style>
-    .choice-btn {
-        width: 200px;
-        height: 200px;
-        font-size: 80px;
-        font-weight: bold;
-        margin: 40px;
-        cursor: pointer;
-        border-radius: 20px;
-        border: 3px solid black;
-    }
-
-    #choices-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    #score-list {
-        font-size: 20px;
-        list-style: none;
-        padding: 0;
-    }
-</style>
