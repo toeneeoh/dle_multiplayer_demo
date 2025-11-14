@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>Dle Multiplayer</h1>
+
+        <!-- NOT IN LOBBY -->
+        <div id="menu-panel">
+
+            <!-- username -->
+            <h3>Username</h3>
+            <input id="username-input" placeholder="Name (max 16)">
+            <button id="setname-btn">Set Name</button>
+
+            <br><br>
+
+            <!-- host controls -->
+            <button id="host-btn">Host Lobby</button>
+
+            <br><br>
+
+            <!-- join controls -->
+            <input id="room-input" placeholder="ROOM CODE">
+            <button id="join-btn">Join Lobby</button>
+        </div>
+
+        <!-- IN LOBBY -->
+        <div id="lobby-panel" style="display: none;">
+
+            <h3 id="room-label">Room:</h3>
+
+            <!-- lobby actions -->
+            <button id="play-btn">Play</button>
+            <button id="leave-btn">Leave</button>
+
+            <br><br>
+
+            <!-- player list -->
+            <h3>Players</h3>
+            <ul id="players-list"></ul>
+
+            <br><br>
+
+            <!-- messaging -->
+            <input id="msg-input" placeholder="Message">
+            <button id="send-btn">Send</button>
+        </div>
+
+        <br><br>
+
+        <!-- IN GAME -->
+        <div id="game-panel" style="display:none; margin-top:40px; justify-content:center; gap:60px;">
+
+            <!-- left side game UI -->
+            <div id="game-left" style="text-align:center;">
+                <h3 id="round-label">round 1</h3>
+
+                <div id="choices-container">
+                    <button id="choice-a" class="choice-btn">A</button>
+                    <button id="choice-b" class="choice-btn">B</button>
+                </div>
+
+                <div id="waiting-msg" style="display:none; font-size:24px; margin-top:30px;">
+                    waiting for other players...
+                </div>
+            </div>
+
+            <!-- right side leaderboard -->
+            <div id="scoreboard" style="min-width:220px;">
+                <h3>scores</h3>
+                <ul id="score-list"></ul>
+            </div>
+
+        </div>
+
+        <!-- LOG -->
+        <pre id="log-box"></pre>
+
+        <script src="client.js"></script>
+    </body>
+</html>
+
+<style>
+    .choice-btn {
+        width: 200px;
+        height: 200px;
+        font-size: 80px;
+        font-weight: bold;
+        margin: 40px;
+        cursor: pointer;
+        border-radius: 20px;
+        border: 3px solid black;
+    }
+
+    #choices-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #score-list {
+        font-size: 20px;
+        list-style: none;
+        padding: 0;
+    }
+</style>
