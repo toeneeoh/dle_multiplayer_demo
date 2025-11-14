@@ -3,7 +3,6 @@ import { WebSocketServer } from "ws";
 import fs from "fs";
 import path from "path";
 
-let nextId = 1;
 const DATA_FILE = "./rooms.json";
 const MAX_ROUNDS = 10;
 
@@ -58,16 +57,17 @@ function generateRoomCode() {
 
 // 
 function broadcastPlayerList(room) {
-    const list = room.players.map((wsObj, idx) => ({
-        id: wsObj._id,
-        name: wsObj._name,
+    const list = room.players.map((ws, idx) => ({
+        pid: ws._pid,
+        name: ws._name,
         isHost: idx === 0
     }));
 
     for (const peer of room.players) {
         peer.send(JSON.stringify({
             type: "PLAYER_LIST",
-            players: list
+            players: list,
+            room: room
         }));
     }
 }
@@ -77,9 +77,9 @@ function computeLeaderboard(room) {
 
     for (const p of room.players) {
         arr.push({
-            id: p._id,
+            pid: p._pid,
             name: p._name,
-            score: room.scores[p._id] || 0
+            score: room.scores[p._pid] || 0
         });
     }
 
@@ -119,7 +119,7 @@ function endRound(room) {
 
     // tally scores
     for (const p of room.players) {
-        const pid = p._id;
+        const pid = p._pid;
         const ans = room.answers[pid];
         if (ans === room.correctAnswer) {
             room.scores[pid] = (room.scores[pid] || 0) + 1;
@@ -144,7 +144,7 @@ function endRound(room) {
     }
 
     // otherwise next round
-    setTimeout(() => startRound(room), 1000);
+    setTimeout(() => startRound(room), 5000);
 }
 
 function endGame(room) {
@@ -187,245 +187,174 @@ function isHost(ws, room) {
 const wss = new WebSocketServer({ server });
 
 wss.on("connection", ws => {
-    ws._id = nextId++;
+    ws._pid = null;
     ws._room = null;
     ws._name = generateDefaultName(); // assigned on connect
     ws._createdLobby = false;
 
-    console.log(`client ${ws._id} connected`);
-
-    ws.send(JSON.stringify({
-        type: "YOUR_ID",
-        id: ws._id
-    }));
-
     ws.on("message", raw => {
         const msg = JSON.parse(raw);
 
-        // -------------------------------
-        // HOST LOBBY
-        // -------------------------------
-        if (msg.type === "HOST_LOBBY") {
-            // prevent re-hosting
-            if (ws._createdLobby) {
-                ws.send(JSON.stringify({
-                    type: "HOST_ERROR",
-                    error: "ALREADY_HOSTED"
-                }));
+        switch (msg.type) {
+
+            case "IDENTIFY": {
+                ws._pid = msg.pid;
                 return;
             }
 
-            // check if user is already in a room
-            if (ws._room !== null) {
-                ws.send(JSON.stringify({
-                    type: "HOST_ERROR",
-                    error: "ALREADY_IN_ROOM"
-                }));
-                return;
-            }
-
-            ws._createdLobby = true;
-
-            const code = generateRoomCode();
-
-            // setup room
-            rooms.set(code, {
-                _code: code,
-                players: [ws],
-                lobbyState: "open",
-                dateStarted: formatDate(new Date()),
-            });
-
-            ws._room = code;
-
-            broadcastPlayerList(rooms.get(code));
-
-            ws.send(JSON.stringify({
-                type: "HOSTED",
-                room: code
-            }));
-
-            console.log(`client ${ws._id} hosted room ${code}`);
-            return;
-        }
-
-
-        // -------------------------------
-        // JOIN ROOM
-        // -------------------------------
-        if (msg.type === "JOIN_ROOM") {
-            // reject if already in a room
-            if (ws._room !== null) {
-                ws.send(JSON.stringify({
-                    type: "JOIN_ERROR",
-                    error: "ALREADY_IN_ROOM"
-                }));
-                return;
-            }
-
-            const code = msg.room;
-            const room = rooms.get(code);
-
-            // reject if room not found
-            if (!room) {
-                ws.send(JSON.stringify({
-                type: "JOIN_ERROR",
-                error: "ROOM_NOT_FOUND"
-                }));
-                return;
-            }
-
-            // reject if lobby already started playing
-            if (room.lobbyState === "playing") {
-                ws.send(JSON.stringify({
-                type: "JOIN_ERROR",
-                error: "ROOM_PLAYING"
-                }));
-                return;
-            }
-
-            // add player to room
-            room.players.push(ws);
-            ws._room = code;
-
-            broadcastPlayerList(rooms.get(code));
-
-            console.log(`client ${ws._id} joined room ${code}`);
-            return;
-        }
-
-        // -------------------------------
-        // START GAME (PLAY)
-        // -------------------------------
-        if (msg.type === "PLAY") {
-            const room = rooms.get(ws._room);
-            if (!room)
-                return;
-
-            // reject if not host
-            if (!isHost(ws, room)) {
-                ws.send(JSON.stringify({
-                type: "PLAY_ERROR",
-                error: "NOT_HOST"
-                }));
-                return;
-            }
-
-            room.lobbyState = "playing";
-            room.dateStarted = formatDate(new Date());
-
-            // init game fields
-            room.roundIndex = 0;
-            room.scores = {};
-
-            for (const p of room.players) {
-                room.scores[p._id] = 0;
-            }
-
-            // broadcast transition into game mode
-            for (const peer of room.players) {
-                peer.send(JSON.stringify({
-                    type: "PLAYING"
-                }));
-            }
-
-            // begin first round
-            console.log(`room ${ws._room} is now PLAYING`);
-            startRound(room);
-            return;
-        }
-
-        // -------------------------------
-        // SEND MESSAGE TO ROOM
-        // -------------------------------
-        if (msg.type === "SEND_MSG" && ws._room) {
-            const room = rooms.get(ws._room);
-            for (const peer of room.players) {
-                if (peer !== ws) {
-                peer.send(JSON.stringify({
-                    type: "RECV_MSG",
-                    from: ws._id,
-                    payload: msg.payload
-                }));
+            case "HOST_LOBBY": {
+                if (ws._createdLobby) {
+                    ws.send(JSON.stringify({ type: "HOST_ERROR", error: "ALREADY_HOSTED" }));
+                    return;
                 }
-            }
-            return;
-        }
+                if (ws._room !== null) {
+                    ws.send(JSON.stringify({ type: "HOST_ERROR", error: "ALREADY_IN_ROOM" }));
+                    return;
+                }
 
-        // -------------------------------
-        // SET USERNAME
-        // -------------------------------
-        if (msg.type === "SET_NAME") {
-            let name = (msg.name || "").trim();
+                ws._createdLobby = true;
 
-            // enforce name rules
-            if (name.length === 0) {
-                name = generateDefaultName();
-            } else if (name.length > 16) {
-                name = name.slice(0, 16);
-            }
+                const code = generateRoomCode();
+                rooms.set(code, {
+                    _code: code,
+                    players: [ws],
+                    lobbyState: "open",
+                    dateStarted: formatDate(new Date())
+                });
 
-            ws._name = name;
+                ws._room = code;
+                broadcastPlayerList(rooms.get(code));
 
-            const room = rooms.get(ws._room);
-            if (room) {
-                broadcastPlayerList(room);
-            }
-
-            return;
-        }
-
-        // -------------------------------
-        // LEAVE LOBBY
-        // -------------------------------
-        if (msg.type === "LEAVE_LOBBY") {
-            const code = ws._room;
-            if (!code || !rooms.has(code)) return;
-
-            const room = rooms.get(code);
-            const idx = room.players.indexOf(ws);
-
-            if (idx !== -1) {
-                room.players.splice(idx, 1);
-            }
-
-            ws._room = null;
-
-            ws.send(JSON.stringify({
-                type: "LEFT_ROOM"
-            }));
-
-            // delete room if empty
-            if (room.players.length === 0) {
-                rooms.delete(code);
+                ws.send(JSON.stringify({ type: "HOSTED", room: code }));
+                console.log(`client ${ws._pid} hosted room ${code}`);
                 return;
             }
 
-            // host transfer
-            if (idx === 0) {
-                const newHost = room.players[0];
-                newHost.send(JSON.stringify({
-                    type: "HOST_TRANSFERRED"
-                }));
+            case "JOIN_ROOM": {
+                if (ws._room !== null) {
+                    ws.send(JSON.stringify({ type: "JOIN_ERROR", error: "ALREADY_IN_ROOM" }));
+                    return;
+                }
+
+                const code = msg.room;
+                const room = rooms.get(code);
+
+                if (!room) {
+                    ws.send(JSON.stringify({ type: "JOIN_ERROR", error: "ROOM_NOT_FOUND" }));
+                    return;
+                }
+                if (room.lobbyState === "playing") {
+                    ws.send(JSON.stringify({ type: "JOIN_ERROR", error: "ROOM_PLAYING" }));
+                    return;
+                }
+
+                room.players.push(ws);
+                ws._room = code;
+
+                broadcastPlayerList(room);
+                console.log(`client ${ws._pid} joined room ${code}`);
+                return;
             }
 
-            // broadcast updated player list
-            broadcastPlayerList(room);
+            case "PLAY": {
+                const room = rooms.get(ws._room);
+                if (!room) return;
 
-            return;
-        }
+                if (!isHost(ws, room)) {
+                    ws.send(JSON.stringify({ type: "PLAY_ERROR", error: "NOT_HOST" }));
+                    return;
+                }
 
-        if (msg.type === "ANSWER") {
-            const room = rooms.get(ws._room);
-            if (!room || !room.roundActive) return;
+                room.lobbyState = "playing";
+                room.dateStarted = formatDate(new Date());
+                room.roundIndex = 0;
+                room.scores = {};
 
-            room.answers[ws._id] = msg.choice; // "A" or "B"
+                for (const p of room.players) {
+                    room.scores[p._pid] = 0;
+                }
 
-            // check if all players answered
-            if (Object.keys(room.answers).length === room.players.length) {
-                endRound(room);
+                for (const peer of room.players) {
+                    peer.send(JSON.stringify({ type: "PLAYING" }));
+                }
+
+                console.log(`room ${ws._room} is now PLAYING`);
+                startRound(room);
+                return;
             }
-            return;
+
+            case "SEND_MSG": {
+                if (!ws._room) return;
+
+                const room = rooms.get(ws._room);
+                for (const peer of room.players) {
+                    if (peer !== ws) {
+                        peer.send(JSON.stringify({
+                            type: "RECV_MSG",
+                            from: ws._pid,
+                            payload: msg.payload
+                        }));
+                    }
+                }
+                return;
+            }
+
+            case "SET_NAME": {
+                let name = (msg.name || "").trim();
+                if (name.length === 0) name = generateDefaultName();
+                if (name.length > 16) name = name.slice(0, 16);
+
+                ws._name = name;
+
+                const room = rooms.get(ws._room);
+                if (room) broadcastPlayerList(room);
+
+                return;
+            }
+
+            case "LEAVE_LOBBY": {
+                const code = ws._room;
+                if (!code || !rooms.has(code)) return;
+
+                const room = rooms.get(code);
+                const idx = room.players.indexOf(ws);
+
+                if (idx !== -1) {
+                    room.players.splice(idx, 1);
+                }
+
+                ws._room = null;
+
+                ws.send(JSON.stringify({ type: "LEFT_ROOM" }));
+
+                if (room.players.length === 0) {
+                    rooms.delete(code);
+                    return;
+                }
+
+                if (idx === 0) {
+                    const newHost = room.players[0];
+                    newHost.send(JSON.stringify({ type: "HOST_TRANSFERRED" }));
+                }
+
+                broadcastPlayerList(room);
+                return;
+            }
+
+            case "ANSWER": {
+                const room = rooms.get(ws._room);
+                if (!room || !room.roundActive) return;
+
+                room.answers[ws._pid] = msg.choice;
+
+                if (Object.keys(room.answers).length === room.players.length) {
+                    endRound(room);
+                }
+                return;
+            }
+
+            default:
+                return;
         }
     });
 
@@ -438,7 +367,7 @@ wss.on("connection", ws => {
         const idx = room.players.indexOf(ws);
 
         if (idx !== -1) room.players.splice(idx, 1);
-        console.log(`client ${ws._id} has left room ${code}`);
+        console.log(`client ${ws._pid} has left room ${code}`);
 
         if (room.players.length > 0) {
             broadcastPlayerList(room);
@@ -457,7 +386,7 @@ wss.on("connection", ws => {
             type: "HOST_TRANSFERRED"
         }));
 
-        console.log(`host of room ${code} is now client ${newHost._id}`);
+        console.log(`host of room ${code} is now client ${newHost._pid}`);
     });
 });
 
