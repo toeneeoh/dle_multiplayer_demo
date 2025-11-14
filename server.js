@@ -63,8 +63,8 @@ function broadcastPlayerList(room) {
         isHost: idx === 0
     }));
 
-    for (const peer of room.players) {
-        peer.send(JSON.stringify({
+    for (const p of room.players) {
+        p.send(JSON.stringify({
             type: "PLAYER_LIST",
             players: list,
             room: room
@@ -105,8 +105,8 @@ function startRound(room) {
     room.correctAnswer = Math.random() < 0.5 ? "A" : "B";
     room.roundIndex++;
 
-    for (const peer of room.players) {
-        peer.send(JSON.stringify({
+    for (const p of room.players) {
+        p.send(JSON.stringify({
             type: "ROUND_START",
             round: room.roundIndex,
             choices: ["A", "B"]
@@ -128,18 +128,20 @@ function endRound(room) {
 
     // end game at MAX_ROUNDS
     if (room.roundIndex >= MAX_ROUNDS) {
-        endGame(room);
+        setTimeout(() => endGame(room), 5000);
         return;
     }
 
     const midLeaderboard = computeLeaderboard(room);
 
     // send leaderboard update
-    for (const peer of room.players) {
-        peer.send(JSON.stringify({
+    for (const p of room.players) {
+        p.send(JSON.stringify({
             type: "LEADERBOARD_UPDATE",
             leaderboard: midLeaderboard,
-            round: room.roundIndex
+            round: room.roundIndex,
+            yourAnswer: room.answers[p._pid],
+            correct: room.correctAnswer
         }));
     }
 
@@ -151,8 +153,15 @@ function endGame(room) {
     const leaderboard = computeLeaderboard(room);
 
     // send game over update
-    for (const peer of room.players) {
-        peer.send(JSON.stringify({
+    for (const p of room.players) {
+        p.send(JSON.stringify({
+            type: "LEADERBOARD_UPDATE",
+            leaderboard: leaderboard,
+            round: room.roundIndex,
+            yourAnswer: room.answers[p._pid],
+            correct: room.correctAnswer
+        }));
+        p.send(JSON.stringify({
             type: "GAME_OVER",
             leaderboard
         }));
@@ -274,8 +283,8 @@ wss.on("connection", ws => {
                     room.scores[p._pid] = 0;
                 }
 
-                for (const peer of room.players) {
-                    peer.send(JSON.stringify({ type: "PLAYING" }));
+                for (const p of room.players) {
+                    p.send(JSON.stringify({ type: "PLAYING" }));
                 }
 
                 console.log(`room ${ws._room} is now PLAYING`);
@@ -287,9 +296,9 @@ wss.on("connection", ws => {
                 if (!ws._room) return;
 
                 const room = rooms.get(ws._room);
-                for (const peer of room.players) {
-                    if (peer !== ws) {
-                        peer.send(JSON.stringify({
+                for (const p of room.players) {
+                    if (p !== ws) {
+                        p.send(JSON.stringify({
                             type: "RECV_MSG",
                             from: ws._pid,
                             payload: msg.payload
