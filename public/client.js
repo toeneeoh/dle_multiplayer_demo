@@ -1,7 +1,12 @@
 // persistent id
 let persistentId = localStorage.getItem("client_id");
 if (!persistentId) {
-    persistentId = crypto.randomUUID();
+    try {
+        persistentId = crypto.randomUUID();
+    } catch (error) {
+       console.log(error) ;
+       persistentId = "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2);
+    }
     localStorage.setItem("client_id", persistentId);
 }
 
