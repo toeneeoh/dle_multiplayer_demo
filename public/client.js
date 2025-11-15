@@ -53,7 +53,7 @@ const show = el => el.classList.remove("hidden");
 const hide = el => el.classList.add("hidden");
 
 function log(...args) {
-    $logBox.textContent += args.join(" ") + "\n";
+    console.log(args.join(" ") + "\n");
 }
 
 function resetScoreTicker() {
@@ -66,11 +66,23 @@ function resetScoreTicker() {
     }
 }
 
-function applyScoreDot(roundIndex, isCorrect) {
+function renderScoreTicker(round, answers, result) {
     const dots = $scoreTicker.querySelectorAll(".score-dot");
-    if (!dots[roundIndex - 1]) return; // safety
 
-    dots[roundIndex - 1].classList.add(isCorrect ? "correct" : "wrong");
+    for (let i = 0; i <= round; i++) {
+        if (dots[i])
+            dots[i].classList.add((result[i] == answers[i]) ? "correct" : "wrong");
+    }
+}
+
+function setMessage(isCorrect) {
+    if (isCorrect) {
+        $waitingMsg.textContent = "you got it right!"
+    } else {
+        $waitingMsg.textContent = "you were not so lucky..."
+    }
+
+    show($waitingMsg);
 }
 
 function clearChoiceStyles() {
@@ -78,8 +90,8 @@ function clearChoiceStyles() {
     $choiceB.classList.remove("chosen", "correct", "wrong");
 }
 
-function setChoiceColor(correct) {
-    if (correct === "A") {
+function setChoiceColor(result) {
+    if (result == "A") {
         $choiceA.classList.add("correct");
         $choiceB.classList.add("wrong");
     } else {
@@ -94,7 +106,8 @@ function selectChoice(btn) {
 }
 
 function gameOver() {
-    $waitingMsg.textContent = "";
+    hide($waitingMsg);
+    hide($choicesContainer);
     $roundLabel.textContent = "Game over"
 }
 
@@ -176,12 +189,16 @@ ws.onmessage = (e) => {
             log("you already created a lobby on this page");
             break;
 
+        case "LEAVE_ERROR":
+            log("leave error:", msg.error);
+            break;
+
         case "PLAYING":
             enterGameMode();
             break;
 
         case "RECV_MSG":
-            log(`from ${msg.from}:`, msg.payload);
+            log(`from ${msg.name}:`, msg.payload);
             break;
 
         case "HOST_TRANSFERRED":
@@ -190,7 +207,8 @@ ws.onmessage = (e) => {
 
         case "PLAYER_LIST":
             renderPlayers(msg.players);
-            enterLobbyMode(msg.room)
+            if (msg.lobbyState === "open")
+                enterLobbyMode(msg.room)
             break;
 
         case "LEFT_ROOM":
@@ -202,7 +220,7 @@ ws.onmessage = (e) => {
         case "ROUND_START":
             clearChoiceStyles();
 
-            $roundLabel.textContent = `round ${msg.round}`;
+            $roundLabel.textContent = `round ${msg.round + 1}`;
             show($choicesContainer);
             hide($waitingMsg);
             break;
@@ -211,14 +229,28 @@ ws.onmessage = (e) => {
             clearChoiceStyles();
             renderScores(msg.leaderboard);
 
-            const correct = msg.correct
+            const result = msg.result[msg.round]
+            const correct = msg.answers[msg.round] === result
 
             // button color highlight
-            setChoiceColor(correct);
+            setChoiceColor(result);
 
             // score ticker
-            applyScoreDot(msg.round, msg.yourAnswer === correct);
+            renderScoreTicker(msg.round, msg.answers, msg.result)
 
+            // change message
+            setMessage(correct);
+
+            break;
+
+        case "RECONNECTED":
+            $roundLabel.textContent = `round ${msg.round + 1}`;
+            enterGameMode();
+            renderScores(msg.leaderboard)
+
+            // only need to re-render if a round was missed
+            if (msg.round > 0)
+                renderScoreTicker(msg.round - 1, msg.answers, msg.result)
             break;
 
         case "GAME_OVER":
@@ -269,10 +301,8 @@ $leaveBtn.onclick = () => {
 
 $choiceA.onclick = () => {
     ws.send(JSON.stringify({ type: "ANSWER", choice: "A" }));
-    show($waitingMsg);
 };
 
 $choiceB.onclick = () => {
     ws.send(JSON.stringify({ type: "ANSWER", choice: "B" }));
-    show($waitingMsg);
 };
