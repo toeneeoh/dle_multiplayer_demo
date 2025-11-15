@@ -8,7 +8,7 @@ or
 
 ```bash
 npm install
-node server.js
+node server/server.js
 ```
 
 open localhost:8080 on two separate browsers / incognito tabs
