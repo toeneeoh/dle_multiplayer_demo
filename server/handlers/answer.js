@@ -11,6 +11,8 @@ export default function ANSWER(ws, msg) {
     if (!room || !room.roundActive)
         return;
 
+    // TODO: check valid answer
+
     // check if already answered
     if (room.answers[player.pid][room.round]) {
         console.log("You already selected an answer.");
